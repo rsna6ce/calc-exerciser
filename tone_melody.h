@@ -47,6 +47,7 @@ class ToneMelody{
         uint32_t _buz_pin;
         bool _is_playing;
         uint32_t _play_job_id;
+        struct melody_t* _playing_melody;
         TaskHandle_t Task1;
 
     public: void begin() {
@@ -65,16 +66,39 @@ class ToneMelody{
         }
         ledcWriteTone(_buz_ch, tone_no);
     };
+    
+    public: void play_tone_melody_async(struct melody_t* melody) {
+        _playing_melody = melody;
+        _play_job_id++;
+    }
 
     private: static void loopTask(void *pvParameters) {
-        
-        uint32_t start_millis = 0;
+        ToneMelody *l_pThis = (ToneMelody *) pvParameters;
+        uint32_t next_millis = 0;
+        struct melody_t* melody = NULL;
+        uint32_t index = 0;
         uint32_t latest_job_id = 0;
-        
+        uint32_t buz_ch = l_pThis->_buz_ch;
+
         while (true) {
-            
-            
-            
+            uint32_t curr_millis = millis();
+            if (latest_job_id != l_pThis->_play_job_id) {
+                latest_job_id = l_pThis->_play_job_id;
+                melody = l_pThis->_playing_melody;
+                index = 0;
+                ledcWriteTone(buz_ch, melody->tone[index].freq);
+                next_millis = curr_millis + melody->tone[index].lengh_ms;
+            }
+            if (next_millis < curr_millis && latest_job_id!=0) {
+                if (index + 1 < melody->count) {
+                    index++;
+                    ledcWriteTone(buz_ch, melody->tone[index].freq);
+                    next_millis = millis() + melody->tone[index].lengh_ms;
+                } else if (index + 1 == melody->count) {
+                    index++;
+                    ledcWriteTone(buz_ch, tone_no);
+                }
+            }
             delay(1);
         }
     }

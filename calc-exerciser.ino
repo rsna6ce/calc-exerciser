@@ -137,7 +137,7 @@ tone_si , tone_do2, tone_re2,
 tone_mi2, tone_so2,
 };
 
-
+int temp = 0;
 int prev_index = -1;
 void loop(void) {
     if (digitalRead(0)) {
@@ -157,13 +157,18 @@ void loop(void) {
             }
         }
     } else {
-        tone_melody.play_tone_melody_sync(&chaim_melody);
-        delay(delay2*2);
-        
-        tone_melody.play_tone_melody_sync(&correct_melody);
-        delay(delay2*2);
-        
-        tone_melody.play_tone_melody_sync(&incorrect_melody);
-        delay(delay2*2);
+        if (temp == 0) {
+            tone_melody.play_tone_melody_async(&chaim_melody);
+            temp++;
+        } else if (temp == 1) {
+            tone_melody.play_tone_melody_async(&correct_melody);
+            temp++;
+        } else if (temp == 2) {
+            tone_melody.play_tone_melody_async(&incorrect_melody);
+            temp++;
+        } else {
+            temp = 0;
+        }
+        delay(500);
     }
 }
