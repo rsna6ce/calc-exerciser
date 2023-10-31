@@ -1,9 +1,29 @@
 #include "esp_system.h"
+#include <Adafruit_GFX.h>    // Core graphics library
+#include <Adafruit_ST7735.h> // Hardware-specific library for ST7735
+#include <SPI.h>
 #include "tone_melody.h"
+
+#include "img/opening_bgr.h"
+#include "img/menu_bgr.h"
+#include "img/background_bgr.h"
+#include "img/playgame_bgr.h"
+#include "img/finish_bgr.h"
+
+#define TFT_CS  26
+#define TFT_DC  27
+#define TFT_RST  5
+#define TFT_MOSI 23  // Data out(SDA)
+#define TFT_SCLK 18  // Clock out (SCL/SCK)
+#define TFT_BL   19  // Backlight LED
+
+Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+float p = 3.1415926;
 
 const uint32_t buz_pin = 13;
 const uint32_t buz_ch = 0;
 
+ToneMelody tone_melody = ToneMelody(buz_ch, buz_pin);
 
 // chaim
 tone_t chaim_tones[] = {
@@ -25,31 +45,51 @@ tone_t chaim_tones[] = {
     {tone_do, delay1},
     {tone_so, delay1},
     {tone_ra, delay1},
-    {tone_fa, delay2},
-};
+    {tone_fa, delay2}};
 struct melody_t chaim_melody = TONES_TO_MELODY(chaim_tones);
 
 // correct
 tone_t correct_tones[] = {
     {tone_si2, delay0},
-    {tone_so2, delay1},
-};
+    {tone_so2, delay1}};
 struct melody_t correct_melody = TONES_TO_MELODY(correct_tones);
 
 // incorect
 tone_t incorrect_tones[] = {
-    {tone_do, delay2},
-};
+    {tone_do, delay2}};
 struct melody_t incorrect_melody = TONES_TO_MELODY(incorrect_tones);
 
 void setup() {
     Serial.begin(115200);
     Serial.println("calc exerciser!");
 
-    ledcSetup(buz_ch, 12000, 8);
-    ledcAttachPin(buz_pin, buz_ch);
+    //tft.initR(INITR_BLACKTAB);      // Init ST7735S chip, black tab
+    tft.initR(INITR_GREENTAB);
+    tft.setRotation(1); //90deg x 1
+    uint16_t time = millis();
+    tft.fillScreen(ST77XX_BLACK);
+    time = millis() - time;
+  
+      // tft print function!
+    tftPrintTest();
+    delay(4000);
+
+    tone_melody.begin();
 
     xTaskCreatePinnedToCore(loop2, "loop2", 4096, NULL, 2, NULL, 0);
+}
+
+void tftPrintTest() {
+    tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_opening_pixels[0], bmp565_opening_width, bmp565_opening_height);
+    delay(2000);
+    tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_menu_pixels[0], bmp565_menu_width, bmp565_menu_height);
+    delay(2000);
+    tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_background_pixels[0], bmp565_background_width, bmp565_background_height);
+    delay(2000);
+    tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_playgame_pixels[0], bmp565_playgame_width, bmp565_playgame_height);
+    delay(2000);
+    tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_finish_pixels[0], bmp565_finish_width, bmp565_finish_height);
+    delay(2000);
 }
 
 uint8_t tenkey_pin_xyz[]  = {25,32,33};
@@ -117,13 +157,13 @@ void loop(void) {
             }
         }
     } else {
-        play_tone_melody(buz_ch, &chaim_melody);
+        tone_melody.play_tone_melody_sync(&chaim_melody);
         delay(delay2*2);
         
-        play_tone_melody(buz_ch, &correct_melody);
+        tone_melody.play_tone_melody_sync(&correct_melody);
         delay(delay2*2);
         
-        play_tone_melody(buz_ch, &incorrect_melody);
+        tone_melody.play_tone_melody_sync(&incorrect_melody);
         delay(delay2*2);
     }
 }

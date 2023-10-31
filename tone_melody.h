@@ -1,4 +1,6 @@
 #pragma once
+#include "esp_system.h"
+#include <stdint.h>
 
 #define TONES_TO_MELODY(x) {x,sizeof(x)/sizeof(x[0])}
 
@@ -31,12 +33,49 @@ struct melody_t{
     uint32_t count;
 };
 
-static void play_tone_melody(uint32_t ch, struct melody_t* melody) {
-    for (uint32_t i=0; i<melody->count; i++) {
-        uint32_t freq = melody->tone[i].freq;
-        uint32_t len = melody->tone[i].lengh_ms;
-        ledcWriteTone(ch, freq);
-        delay(len);
+class ToneMelody{
+    public:
+        ToneMelody(uint32_t buz_ch, uint32_t buz_pin):
+            _is_playing(false),
+            _play_job_id(0),
+            _buz_ch(buz_ch),
+            _buz_pin(buz_pin)
+        {};
+
+    private:
+        uint32_t _buz_ch;
+        uint32_t _buz_pin;
+        bool _is_playing;
+        uint32_t _play_job_id;
+        TaskHandle_t Task1;
+
+    public: void begin() {
+        ledcSetup(_buz_ch, 12000, 8);
+        ledcAttachPin(_buz_pin, _buz_ch);
+
+        xTaskCreatePinnedToCore(this->loopTask, "tone_melody_loop", 4096, this, 1, &Task1, 0);
     }
-    ledcWriteTone(ch, tone_no);
-}
+    
+    public: void play_tone_melody_sync(struct melody_t* melody) {
+        for (uint32_t i=0; i<melody->count; i++) {
+            uint32_t freq = melody->tone[i].freq;
+            uint32_t len = melody->tone[i].lengh_ms;
+            ledcWriteTone(_buz_ch, freq);
+            delay(len);
+        }
+        ledcWriteTone(_buz_ch, tone_no);
+    };
+
+    private: static void loopTask(void *pvParameters) {
+        
+        uint32_t start_millis = 0;
+        uint32_t latest_job_id = 0;
+        
+        while (true) {
+            
+            
+            
+            delay(1);
+        }
+    }
+};
