@@ -1,3 +1,4 @@
+#pragma once
 const uint32_t bmp565_12pt_2_width  = 12;
 const uint32_t bmp565_12pt_2_height = 22;
 const uint16_t bmp565_12pt_2_pixels[] = {

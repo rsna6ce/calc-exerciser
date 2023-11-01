@@ -1,3 +1,4 @@
+#pragma once
 const uint32_t bmp565_background_width  = 161;
 const uint32_t bmp565_background_height = 129;
 const uint16_t bmp565_background_pixels[] = {
