@@ -67,6 +67,10 @@ const uint16_t* font18_pixels[] = {
     &bmp565_18pt_9_pixels[0],
 };
 
+#define TOSTR(x) #x
+#define TOSTRX(x) TOSTR(x)
+#define DEBUG_PRINT_VARIABLE(x) Serial.print(TOSTRX(x));Serial.println(x);
+
 #define TFT_CS  26
 #define TFT_DC  27
 #define TFT_RST  5
@@ -74,7 +78,7 @@ const uint16_t* font18_pixels[] = {
 #define TFT_SCLK 18  // Clock out (SCL/SCK)
 #define TFT_BL   19  // Backlight LED
 #define RGB565_TO_BGR565(x) (((x)<<11) | ((x)&0x07e0) | ((x)>>11))
-#define RGB_TO_BGR565(r,g,b) ((b)>>3 | (g)>>2 | (r)>>3)
+#define RGB_TO_BGR565(r,g,b) (((b)>>3)<<11 | ((g)>>2)<<5 | (r)>>3)
 #define SCREEN_WIDTH 160
 #define SCREEN_HEIGHT 128
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
@@ -106,6 +110,16 @@ tone_t chime_tones[] = {
     {tone_ra, delay1},
     {tone_fa, delay2}};
 struct melody_t chaim_melody = TONES_TO_MELODY(chime_tones);
+
+tone_t fanfare_tones[] = {
+    {tone_so,   delay0},
+    {tone_do2,  delay0},
+    {tone_mi2,  delay0},
+    {tone_so2,  delay0},
+    {tone_no,   delay1},
+    {tone_mi2,  delay0},
+    {tone_so2,  delay2}};
+struct melody_t fanfare_melody = TONES_TO_MELODY(fanfare_tones);
 
 // melody define correct
 tone_t correct_tones[] = {
@@ -206,7 +220,7 @@ uint32_t curr_menu_id = menu_add1;
 uint32_t countdown_next_millis = 0;
 uint32_t countdown_next_count = 0;
 uint32_t playgame_next_millis = 0;
-uint32_t playgame_time_remain = 0;
+uint32_t playgame_start_millis = 0;
 uint32_t playgeme_bar_padding = 3;
 uint32_t playgame_bar_height = 14;
 
@@ -248,8 +262,6 @@ void screen_keyevent_menu(uint8_t key_no, uint32_t curr_millis) {
     }
 }
 void screen_keyevent_countdown(uint8_t key_no, uint32_t curr_millis) {
-    Serial.print("screen_keyevent_countdown key ");
-    Serial.println(key_no);
     // do nothing
 }
 void screen_keyevent_playgame(uint8_t key_no, uint32_t curr_millis) {
@@ -259,6 +271,13 @@ void screen_keyevent_playgame(uint8_t key_no, uint32_t curr_millis) {
 void screen_keyevent_result(uint8_t key_no, uint32_t curr_millis) {
     Serial.print("screen_keyevent_result key ");
     Serial.println(key_no);
+    tone_melody.play_tone_melody_async(&silent_melody);
+    curr_screen_id = screen_menu;
+    tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_menu_pixels[0], bmp565_menu_width, bmp565_menu_height);
+    uint16_t y = ((137-37)/4 * (curr_menu_id/2)) + 37;
+    uint16_t x = ((141-103) * (curr_menu_id&1)) + 103;
+    tft.fillCircle(x, y, 3, RGB565_TO_BGR565(ST77XX_RED));
+
 }
 
 void screen_timerevent_countdown(uint32_t curr_millis) {
@@ -275,13 +294,31 @@ void screen_timerevent_countdown(uint32_t curr_millis) {
         countdown_next_millis = 0;
         curr_screen_id = screen_playgame;
         playgame_next_millis = curr_millis + 100;
-        playgame_time_remain = playgeme_time_limit;
+        playgame_start_millis = curr_millis;
         tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_playgame_pixels[0], bmp565_playgame_width, bmp565_playgame_height);
         tft.fillRect(playgeme_bar_padding, playgeme_bar_padding, SCREEN_WIDTH-playgeme_bar_padding*2, playgame_bar_height, RGB565_TO_BGR565(ST77XX_BLUE));
     }
 }
 void screen_timerevent_playgame(uint32_t curr_millis) {
-    
+    if (playgame_next_millis==0 || curr_millis < playgame_next_millis) {
+        return;
+    }
+    uint32_t past_millis = curr_millis - playgame_next_millis - 100;
+    DEBUG_PRINT_VARIABLE(past_millis);
+    DEBUG_PRINT_VARIABLE(playgame_start_millis);
+    if (curr_millis < playgame_start_millis+playgeme_time_limit) {
+        uint32_t remain_millis = playgame_start_millis+playgeme_time_limit - curr_millis;
+        uint32_t bar_length = SCREEN_WIDTH-playgeme_bar_padding*2;
+        uint32_t bar_remain = remain_millis * bar_length / playgeme_time_limit;
+        uint32_t bar_padding = bar_length - bar_remain;
+        tft.fillRect(playgeme_bar_padding, playgeme_bar_padding, bar_remain, playgame_bar_height, RGB565_TO_BGR565(ST77XX_BLUE));
+        tft.fillRect(playgeme_bar_padding + bar_remain, playgeme_bar_padding, bar_padding, playgame_bar_height, RGB_TO_BGR565(128,128,128));
+        playgame_next_millis += 100;
+    } else {
+        curr_screen_id = screen_result;
+        tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_result_pixels[0], bmp565_result_width, bmp565_result_height);
+        tone_melody.play_tone_melody_async(&fanfare_melody);
+    }
 }
 
 
