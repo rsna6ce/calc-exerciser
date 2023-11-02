@@ -222,8 +222,13 @@ uint32_t countdown_next_count = 0;
 uint32_t playgame_next_millis = 0;
 uint32_t playgame_start_millis = 0;
 uint32_t playgeme_bar_padding = 3;
-uint32_t playgame_bar_height = 14;
-
+uint32_t playgame_bar_height = 12;
+uint32_t playgamte_input = 0;
+uint32_t playgame_point = 123;
+uint32_t playgame_high = 999;
+int32_t playgame_value1 = 0;
+int32_t playgame_value2 = 0;
+int32_t playgame_answer = 0;
 const uint32_t playgeme_time_limit = 60*1000;
 
 void screen_keyevent_openning(uint8_t key_no, uint32_t curr_millis) {
@@ -258,34 +263,185 @@ void screen_keyevent_menu(uint8_t key_no, uint32_t curr_millis) {
         countdown_next_millis = curr_millis + 100;
         countdown_next_count = 3;
         curr_screen_id = screen_countdown;
+        randomSeed(curr_millis);
         tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_background_pixels[0], bmp565_background_width, bmp565_background_height);
     }
 }
-void screen_keyevent_countdown(uint8_t key_no, uint32_t curr_millis) {
-    // do nothing
+
+
+void gen_exercise_add(uint32_t level, int32_t* value1, int32_t* value2, int32_t* answer) {
+    int32_t v1 = 0;
+    int32_t v2 = 0;
+    if (level == 1) {
+        v1  = random(1, 9);
+        v2  = random(1, 9);
+    } else if (level == 2) {
+        v1 = random(10, 99);
+        v2 = random(1, 9);
+    }
+    *value1 = v1;
+    *value2 = v2;
+    *answer = v1 + v2;
 }
+void gen_exercise_sub(uint32_t level, int32_t* value1, int32_t* value2, int32_t* answer) {
+    int32_t v1 = 0;
+    int32_t v2 = 0;
+    if (level == 1) {
+        v1  = random(1, 9);
+        v2  = random(v1, 9);
+    } else if (level == 2) {
+        v1 = random(10, 99);
+        v2 = random(1, 9);
+    }
+    *value1 = v1;
+    *value2 = v2;
+    *answer = v1 - v2;
+}
+void gen_exercise_mul(uint32_t level, int32_t* value1, int32_t* value2, int32_t* answer) {
+    int32_t v1 = 0;
+    int32_t v2 = 0;
+    if (level == 1) {
+        v1  = random(1, 9);
+        v2  = random(1, 9);
+    } else if (level == 2) {
+        v1 = random(10, 99);
+        v2 = random(1, 9);
+    }
+    *value1 = v1;
+    *value2 = v2;
+    *answer = v1 * v2;
+}
+void gen_exercise_div(uint32_t level, int32_t* value1, int32_t* value2, int32_t* answer) {
+    int32_t v2 = 0;
+    int32_t ans = 0;
+    if (level == 1) {
+        v2  = random(1, 9);
+        ans  = random(1, 9);
+    } else if (level == 2) {
+        v2 = random(10, 99);
+        ans = random(1, 9);
+    }
+    *value1 = v2 * ans;
+    *value2 = v2;
+    *answer = ans;
+}
+void gen_exercise(int32_t* value1, int32_t* value2, int32_t* answer) {
+    switch (curr_menu_id) {
+        case menu_add1: gen_exercise_add(1, value1, value2, answer); break;
+        case menu_add2: gen_exercise_add(2, value1, value2, answer); break;
+        case menu_sub1: gen_exercise_sub(1, value1, value2, answer); break;
+        case menu_sub2: gen_exercise_sub(2, value1, value2, answer); break;
+        case menu_mul1: gen_exercise_mul(1, value1, value2, answer); break;
+        case menu_mul2: gen_exercise_mul(2, value1, value2, answer); break;
+        case menu_div1: gen_exercise_div(1, value1, value2, answer); break;
+        case menu_div2: gen_exercise_div(2, value1, value2, answer); break;
+    };
+}
+void draw_string(uint16_t x, uint16_t y, uint32_t font_size, String s) {
+    uint16_t curr_y = y;
+    uint16_t curr_x = x;
+    uint16_t char_width;
+    uint16_t char_height;
+    uint16_t **char_pixels;
+    if (font_size == 12) {
+        char_width = bmp565_12pt_0_width;
+        char_height = bmp565_12pt_0_height;
+        char_pixels = (uint16_t **)&font12_pixels[0];
+    } else if(font_size == 18) {
+        char_width = bmp565_18pt_0_width;
+        char_height = bmp565_18pt_0_height;
+        char_pixels = (uint16_t **)&font18_pixels[0];
+    } else {
+        return;
+    }
+    for (int i=0; i<s.length(); i++) {
+        String chr = s.substring(i, i+1);
+        if (chr == " ") {
+            tft.fillRect(curr_x, curr_y, char_width, char_height, RGB565_TO_BGR565(ST77XX_WHITE));
+            curr_x += char_width;
+        } else if (chr == "0" || chr == "1" || chr == "2" || chr == "3" || chr == "4" ||
+                   chr == "5" || chr == "6" || chr == "7" || chr == "8" || chr == "9") {
+           int num = chr.toInt();
+           tft.drawRGBBitmap(curr_x, curr_y, (uint16_t*)char_pixels[num], char_width, char_height);
+           curr_x += char_width;
+       } else if (chr == "+") {
+           if (font_size == 12) {
+               // not impremented
+           } else if (font_size == 18) {
+               tft.drawRGBBitmap(curr_x, curr_y, (uint16_t*)&bmp565_18pt_add_pixels[0], bmp565_18pt_add_width, bmp565_18pt_add_height);
+               curr_x += bmp565_18pt_add_width;
+           }
+       } else if (chr == "-") {
+           if (font_size == 12) {
+               // not impremented
+           } else if (font_size == 18) {
+               tft.drawRGBBitmap(curr_x, curr_y, (uint16_t*)&bmp565_18pt_sub_pixels[0], bmp565_18pt_sub_width, bmp565_18pt_sub_height);
+               curr_x += bmp565_18pt_sub_width;
+           }
+       } else if (chr == "*") {
+           if (font_size == 12) {
+               // not impremented
+           } else if (font_size == 18) {
+               tft.drawRGBBitmap(curr_x, curr_y, (uint16_t*)&bmp565_18pt_mul_pixels[0], bmp565_18pt_mul_width, bmp565_18pt_mul_height);
+               curr_x += bmp565_18pt_mul_width;
+           }
+       } else if (chr == "/") {
+           if (font_size == 12) {
+               // not impremented
+           } else if (font_size == 18) {
+               tft.drawRGBBitmap(curr_x, curr_y, (uint16_t*)&bmp565_18pt_div_pixels[0], bmp565_18pt_div_width, bmp565_18pt_div_height);
+               curr_x += bmp565_18pt_div_width;
+           }
+       } else if (chr == "=") {
+           if (font_size == 12) {
+               // not impremented
+           } else if (font_size == 18) {
+               tft.drawRGBBitmap(curr_x, curr_y, (uint16_t*)&bmp565_18pt_eq_pixels[0], bmp565_18pt_eq_width, bmp565_18pt_eq_height);
+               curr_x += bmp565_18pt_eq_width;
+           }
+       } else if (chr == "S") {
+           if (font_size == 12) {
+               tft.drawRGBBitmap(curr_x, curr_y, (uint16_t*)&bmp565_12pt_star_pixels[0], bmp565_12pt_star_width, bmp565_12pt_star_height);
+               curr_x += char_width;
+           } else if (font_size == 18) {
+               // not impremented
+           }
+       }
+    }
+}
+void screen_redraw_item_playgame() {
+    // high : 52, 18
+    String high = "";
+    high += ((playgame_high%1000) >= 100 ? String((playgame_high%1000)/100) : " ");
+    high += ((playgame_high%100) >= 10 ? String((playgame_high%100)/10) : " ");
+    high += String(playgame_high%10);
+    draw_string(52, 16, 12, high);
+    // point : 123, 18
+    String point = "";
+    point += ((playgame_point%1000) >= 100 ? String((playgame_point%1000)/100) : " ");
+    point += ((playgame_point%100) >= 10 ? String((playgame_point%100)/10) : " ");
+    point += String(playgame_point%10);
+    draw_string(123, 16, 12, point);
+    // exercise
+    
+}
+
 void screen_keyevent_playgame(uint8_t key_no, uint32_t curr_millis) {
-    Serial.print("screen_keyevent_playgame key ");
-    Serial.println(key_no);
+    
 }
 void screen_keyevent_result(uint8_t key_no, uint32_t curr_millis) {
-    Serial.print("screen_keyevent_result key ");
-    Serial.println(key_no);
     tone_melody.play_tone_melody_async(&silent_melody);
     curr_screen_id = screen_menu;
     tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_menu_pixels[0], bmp565_menu_width, bmp565_menu_height);
     uint16_t y = ((137-37)/4 * (curr_menu_id/2)) + 37;
     uint16_t x = ((141-103) * (curr_menu_id&1)) + 103;
     tft.fillCircle(x, y, 3, RGB565_TO_BGR565(ST77XX_RED));
-
 }
 
 void screen_timerevent_countdown(uint32_t curr_millis) {
     if (countdown_next_millis==0 || curr_millis < countdown_next_millis) {
         return;
     }
-    Serial.print("screen_timerevent_countdown countdown_next_count ");
-    Serial.println(countdown_next_count);
     uint16_t x = (SCREEN_WIDTH - font12_width) /2;
     uint16_t y = (SCREEN_HEIGHT - font12_height) /2;
     tft.drawRGBBitmap(x,y, (uint16_t*)font18_pixels[countdown_next_count], font18_width, font18_height);
@@ -297,6 +453,7 @@ void screen_timerevent_countdown(uint32_t curr_millis) {
         playgame_start_millis = curr_millis;
         tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_playgame_pixels[0], bmp565_playgame_width, bmp565_playgame_height);
         tft.fillRect(playgeme_bar_padding, playgeme_bar_padding, SCREEN_WIDTH-playgeme_bar_padding*2, playgame_bar_height, RGB565_TO_BGR565(ST77XX_BLUE));
+        screen_redraw_item_playgame();
     }
 }
 void screen_timerevent_playgame(uint32_t curr_millis) {
@@ -304,8 +461,6 @@ void screen_timerevent_playgame(uint32_t curr_millis) {
         return;
     }
     uint32_t past_millis = curr_millis - playgame_next_millis - 100;
-    DEBUG_PRINT_VARIABLE(past_millis);
-    DEBUG_PRINT_VARIABLE(playgame_start_millis);
     if (curr_millis < playgame_start_millis+playgeme_time_limit) {
         uint32_t remain_millis = playgame_start_millis+playgeme_time_limit - curr_millis;
         uint32_t bar_length = SCREEN_WIDTH-playgeme_bar_padding*2;
@@ -342,8 +497,6 @@ void loop(void) {
                 screen_keyevent_openning(keyno, curr_millis);
             } else if (curr_screen_id == screen_menu) {
                 screen_keyevent_menu(keyno, curr_millis);
-            } else if (curr_screen_id == screen_countdown) {
-                screen_keyevent_countdown(keyno, curr_millis);
             } else if (curr_screen_id == screen_playgame) {
                 screen_keyevent_playgame(keyno, curr_millis);
             } else if (curr_screen_id == screen_result) {
