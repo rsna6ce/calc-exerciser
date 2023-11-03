@@ -537,7 +537,7 @@ void screen_keyevent_result(uint8_t key_no, uint32_t curr_millis) {
     curr_screen_id = screen_menu;
     tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_menu_pixels[0], bmp565_menu_width, bmp565_menu_height);
     uint16_t y = ((137-37)/4 * (curr_menu_id/2)) + 37;
-    uint16_t x = ((141-103) * (curr_menu_id&1)) + 103;
+    uint16_t x = ((141-102) * (curr_menu_id&1)) + 102;
     tft.fillCircle(x, y, 3, RGB565_TO_BGR565(ST77XX_RED));
 }
 
