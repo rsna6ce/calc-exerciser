@@ -73,22 +73,22 @@ const uint16_t* font18_pixels[] = {
 #define TOSTRX(x) TOSTR(x)
 #define DEBUG_PRINT_VARIABLE(x) Serial.print(TOSTRX(x));Serial.print(":");Serial.println(x);
 
-#define TFT_CS  26
-#define TFT_DC  27
-#define TFT_RST  5
-#define TFT_MOSI 23  // Data out(SDA)
-#define TFT_SCLK 18  // Clock out (SCL/SCK)
-#define TFT_BL   19  // Backlight LED
 #define RGB565_TO_BGR565(x) (((x)<<11) | ((x)&0x07e0) | ((x)>>11))
 #define RGB_TO_BGR565(r,g,b) (((b)>>3)<<11 | ((g)>>2)<<5 | (r)>>3)
 #define SCREEN_WIDTH 160
 #define SCREEN_HEIGHT 128
+#define TFT_CS   26
+#define TFT_DC   27
+#define TFT_RST   5
+#define TFT_MOSI 23  // Data out(SDA)
+#define TFT_SCLK 18  // Clock out (SCL/SCK)
+#define TFT_BL   19  // Backlight LED
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
 
-const uint32_t buz_pin = 13;
-const uint32_t buz_ch = 0;
-ToneMelody tone_melody = ToneMelody(buz_ch, buz_pin);
+#define BUZ_PIN 13
+#define BUZ_CH   0
+ToneMelody tone_melody = ToneMelody(BUZ_CH, BUZ_PIN);
 
 // melody define chime
 tone_t chime_tones[] = {
@@ -277,47 +277,6 @@ int32_t playgame_value2 = 0;
 int32_t playgame_answer = 0;
 const uint32_t playgeme_time_limit = 60*1000;
 
-void screen_keyevent_openning(uint8_t key_no, uint32_t curr_millis) {
-    if (digitalRead(0) == LOW) {
-        // reset highscore
-        memset( &playgame_highsrore[0], 0, sizeof(playgame_highsrore) );
-        write_highscore();
-    }
-
-    tone_melody.play_tone_melody_async(&silent_melody);
-    curr_screen_id = screen_menu;
-    tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_menu_pixels[0], bmp565_menu_width, bmp565_menu_height);
-    uint16_t y = ((137-37)/4 * (curr_menu_id/2)) + 37;
-    uint16_t x = ((141-102) * (curr_menu_id&1)) + 102;
-    tft.fillCircle(x, y, 3, RGB565_TO_BGR565(ST77XX_RED));
-}
-
-void screen_keyevent_menu(uint8_t key_no, uint32_t curr_millis) {
-    Serial.print("screen_keyevent_menu key ");
-    if (key_no == 0) {
-        curr_menu_id++;
-        if (curr_menu_id >= menu_centinel) {
-            curr_menu_id = menu_add1;
-        }
-        // top-left(103,37), bottom-right(141,137)
-        for (uint32_t i=0; i<menu_centinel; i++) {
-            uint16_t y = ((137-37)/4 * (i/2)) + 37;
-            uint16_t x = ((141-102) * (i&1)) + 102;
-            if (i == curr_menu_id) {
-                tft.fillCircle(x, y, 3, RGB565_TO_BGR565(ST77XX_RED));
-            } else {
-                tft.fillCircle(x, y, 3, ST77XX_WHITE);
-            }
-        }
-    } else if (key_no == 11) {
-        countdown_next_millis = curr_millis + 100;
-        countdown_next_count = 3;
-        curr_screen_id = screen_countdown;
-        randomSeed(curr_millis);
-        tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_background_pixels[0], bmp565_background_width, bmp565_background_height);
-    }
-}
-
 
 void gen_exercise_add(uint32_t level, int32_t* value1, int32_t* value2, int32_t* answer) {
     int32_t v1 = 0;
@@ -404,12 +363,12 @@ void draw_string(uint16_t x, uint16_t y, uint32_t font_size, String s) {
     uint16_t char_height;
     uint16_t **char_pixels;
     if (font_size == 12) {
-        char_width = bmp565_12pt_0_width;
-        char_height = bmp565_12pt_0_height;
+        char_width = font12_width;
+        char_height = font12_height;
         char_pixels = (uint16_t **)&font12_pixels[0];
     } else if(font_size == 18) {
-        char_width = bmp565_18pt_0_width;
-        char_height = bmp565_18pt_0_height;
+        char_width = font18_width;
+        char_height = font18_height;
         char_pixels = (uint16_t **)&font18_pixels[0];
     } else {
         return;
@@ -476,6 +435,89 @@ void draw_string(uint16_t x, uint16_t y, uint32_t font_size, String s) {
        }
     }
 }
+
+void screen_keyevent_openning(uint8_t key_no, uint32_t curr_millis) {
+    if (digitalRead(0) == LOW) {
+        // reset highscore
+        memset( &playgame_highsrore[0], 0, sizeof(playgame_highsrore) );
+        write_highscore();
+    }
+
+    tone_melody.play_tone_melody_async(&silent_melody);
+    curr_screen_id = screen_menu;
+    tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_menu_pixels[0], bmp565_menu_width, bmp565_menu_height);
+    screen_redraw_item_menu();
+}
+
+void screen_redraw_item_menu() {
+    // top-left(102,37), bottom-right(141,139)
+    for (uint32_t i=0; i<menu_centinel; i++) {
+        uint16_t y = ((139-37) * (i/2) / 4) + 37;
+        uint16_t x = ((141-102) * (i&1)) + 102;
+        if (i == curr_menu_id) {
+            tft.fillCircle(x, y, 3, RGB565_TO_BGR565(ST77XX_RED));
+        } else {
+            tft.fillCircle(x, y, 3, ST77XX_WHITE);
+        }
+    }
+}
+
+void screen_keyevent_menu(uint8_t key_no, uint32_t curr_millis) {
+    Serial.print("screen_keyevent_menu key ");
+    if (key_no == 0) {
+        curr_menu_id++;
+        if (curr_menu_id >= menu_centinel) {
+            curr_menu_id = menu_add1;
+        }
+        screen_redraw_item_menu();
+    } else if (key_no == 11) {
+        countdown_next_millis = curr_millis + 100;
+        countdown_next_count = 3;
+        curr_screen_id = screen_countdown;
+        randomSeed(curr_millis);
+        tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_background_pixels[0], bmp565_background_width, bmp565_background_height);
+    }
+}
+
+void screen_timerevent_countdown(uint32_t curr_millis) {
+    if (countdown_next_millis==0 || curr_millis < countdown_next_millis) {
+        return;
+    }
+
+    //twice size pixcel
+    const uint32_t font18_width2 = font18_width * 2;
+    const uint32_t font18_height2 = font18_height * 2;
+    uint16_t dst_pixels[font18_width2 * font18_height2];
+    uint16_t *src_pixcels = (uint16_t*)font18_pixels[countdown_next_count];
+    for (uint32_t y=0; y<font18_height; y++) {
+        for(uint32_t x=0; x<font18_width; x++) {
+            uint16_t pix = src_pixcels[y*font18_width + x];
+            dst_pixels[(y*2  )*font18_width2 + (x*2  )] = pix;
+            dst_pixels[(y*2  )*font18_width2 + (x*2+1)] = pix;
+            dst_pixels[(y*2+1)*font18_width2 + (x*2  )] = pix;
+            dst_pixels[(y*2+1)*font18_width2 + (x*2+1)] = pix;
+        }
+    }
+    uint16_t x = (SCREEN_WIDTH - font18_width2) /2;
+    uint16_t y = (SCREEN_HEIGHT - font18_height2) /2;
+    tft.drawRGBBitmap(x,y, (uint16_t*)&dst_pixels[0], font18_width2, font18_height2);
+    countdown_next_millis += 1000;
+    if (countdown_next_count-- == 0) {
+        countdown_next_millis = 0;
+        curr_screen_id = screen_playgame;
+        playgame_point = 0;
+        playgame_value1 = 0;
+        playgame_value2 = 0;
+        playgame_answer = 0;
+        playgame_next_millis = curr_millis + 100;
+        playgame_start_millis = curr_millis;
+        tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_playgame_pixels[0], bmp565_playgame_width, bmp565_playgame_height);
+        tft.fillRect(playgeme_bar_padding, playgeme_bar_padding, SCREEN_WIDTH-playgeme_bar_padding*2, playgame_bar_height, RGB565_TO_BGR565(ST77XX_BLUE));
+        gen_exercise(&playgame_value1, &playgame_value2, &playgame_answer);
+        screen_redraw_item_playgame();
+    }
+}
+
 void screen_redraw_item_playgame() {
     // high : 52, 18, right align, 3digit
     String high = "   " + String(playgame_highsrore[curr_menu_id]);
@@ -490,20 +532,10 @@ void screen_redraw_item_playgame() {
     exercise += (curr_menu_id==menu_mul1||curr_menu_id==menu_mul2)? "*" : "";
     exercise += (curr_menu_id==menu_div1||curr_menu_id==menu_div2)? "/" : "";
     exercise += String(playgame_value2) + "=?";
-    draw_string(3, 38, 18, exercise);
+    draw_string(3, 43, 18, exercise);
     // input : 3, 82
     String input = "        " + String(playgame_input);
-    draw_string(3, 82, 18, input.substring(input.length()-8));
-}
-
-void screen_redraw_item_result(bool hightscore_up) {
-    // high : 53, 12, right align, 3digit
-    String high = "   " + String(playgame_highsrore[curr_menu_id]);
-    high += hightscore_up ? "S" : "";
-    draw_string(52, 12, 12, high.substring(high.length()-3));
-    // point 94, 37, right align, 3digit
-    String point = "   " + String(playgame_point);
-    draw_string(94, 37, 18, point.substring(point.length()-3));
+    draw_string(3, 87, 18, input.substring(input.length()-8));
 }
 
 void screen_keyevent_playgame(uint8_t key_no, uint32_t curr_millis) {
@@ -530,39 +562,6 @@ void screen_keyevent_playgame(uint8_t key_no, uint32_t curr_millis) {
         }
     }
     screen_redraw_item_playgame();
-}
-
-void screen_keyevent_result(uint8_t key_no, uint32_t curr_millis) {
-    tone_melody.play_tone_melody_async(&silent_melody);
-    curr_screen_id = screen_menu;
-    tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_menu_pixels[0], bmp565_menu_width, bmp565_menu_height);
-    uint16_t y = ((137-37)/4 * (curr_menu_id/2)) + 37;
-    uint16_t x = ((141-102) * (curr_menu_id&1)) + 102;
-    tft.fillCircle(x, y, 3, RGB565_TO_BGR565(ST77XX_RED));
-}
-
-void screen_timerevent_countdown(uint32_t curr_millis) {
-    if (countdown_next_millis==0 || curr_millis < countdown_next_millis) {
-        return;
-    }
-    uint16_t x = (SCREEN_WIDTH - font12_width) /2;
-    uint16_t y = (SCREEN_HEIGHT - font12_height) /2;
-    tft.drawRGBBitmap(x,y, (uint16_t*)font18_pixels[countdown_next_count], font18_width, font18_height);
-    countdown_next_millis += 1000;
-    if (countdown_next_count-- == 0) {
-        countdown_next_millis = 0;
-        curr_screen_id = screen_playgame;
-        playgame_point = 0;
-        playgame_value1 = 0;
-        playgame_value2 = 0;
-        playgame_answer = 0;
-        playgame_next_millis = curr_millis + 100;
-        playgame_start_millis = curr_millis;
-        tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_playgame_pixels[0], bmp565_playgame_width, bmp565_playgame_height);
-        tft.fillRect(playgeme_bar_padding, playgeme_bar_padding, SCREEN_WIDTH-playgeme_bar_padding*2, playgame_bar_height, RGB565_TO_BGR565(ST77XX_BLUE));
-        gen_exercise(&playgame_value1, &playgame_value2, &playgame_answer);
-        screen_redraw_item_playgame();
-    }
 }
 
 void screen_timerevent_playgame(uint32_t curr_millis) {
@@ -595,10 +594,29 @@ void screen_timerevent_playgame(uint32_t curr_millis) {
     }
 }
 
+void screen_redraw_item_result(bool hightscore_up) {
+    // high : 53, 12, right align, 3digit
+    String high = "   " + String(playgame_highsrore[curr_menu_id]);
+    high += hightscore_up ? "S" : "";
+    draw_string(52, 14, 12, high.substring(high.length()-3));
+    // point 94, 37, right align, 3digit
+    String point = "   " + String(playgame_point);
+    draw_string(94, 46, 18, point.substring(point.length()-3));
+}
+
+void screen_keyevent_result(uint8_t key_no, uint32_t curr_millis) {
+    tone_melody.play_tone_melody_async(&silent_melody);
+    curr_screen_id = screen_menu;
+    tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_menu_pixels[0], bmp565_menu_width, bmp565_menu_height);
+    screen_redraw_item_menu();
+}
+
+
 const uint32_t timerevent_interval = 10;
 uint32_t prev_timerevent_millis = 0;
 uint8_t prev_index = 0xff;
 void loop(void) {
+    //key event polling
     uint32_t curr_millis = millis();
     uint8_t key_index = 0xff;
     for (int i=0; i<12; i++) {
@@ -622,6 +640,7 @@ void loop(void) {
             }
         }
     }
+    // timer event polling
     if (prev_timerevent_millis+timerevent_interval < curr_millis) {
         prev_timerevent_millis = curr_millis;
         if (curr_screen_id == screen_countdown) {
