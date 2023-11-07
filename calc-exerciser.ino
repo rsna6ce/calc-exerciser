@@ -201,9 +201,13 @@ void setup() {
     //onboard sw
     pinMode(0, INPUT_PULLUP);
 
+    pinMode(TFT_BL, OUTPUT);
+    digitalWrite(TFT_BL, HIGH);
     tft.initR(INITR_GREENTAB);
+    tft.fillScreen(ST77XX_BLACK);
     tft.setRotation(3); //90deg x 3
     tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_opening_pixels[0], bmp565_opening_width, bmp565_opening_height);
+    digitalWrite(TFT_BL, LOW);
 
     tone_melody.begin();
     tone_melody.play_tone_melody_async(&chaim_melody);
