@@ -202,7 +202,7 @@ void setup() {
     pinMode(0, INPUT_PULLUP);
 
     tft.initR(INITR_GREENTAB);
-    tft.setRotation(1); //90deg x 1
+    tft.setRotation(3); //90deg x 3
     tft.drawRGBBitmap(0,0, (uint16_t*)&bmp565_opening_pixels[0], bmp565_opening_width, bmp565_opening_height);
 
     tone_melody.begin();
