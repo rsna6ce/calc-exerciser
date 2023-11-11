@@ -150,6 +150,11 @@ tone_t silent_tones[] = {
     {tone_no, delay0}};
 struct melody_t silent_melody = TONES_TO_MELODY(silent_tones);
 
+// melody define beep
+tone_t beep_tones[] = {
+    {tone_do4, delay1}};
+struct melody_t beep_melody = TONES_TO_MELODY(beep_tones);
+
 // playgame
 enum screen_id {
     screen_openning,
@@ -235,6 +240,22 @@ uint8_t tenkey_pin_xyz[]  = {25,32,33};
 uint8_t tenkey_pin_abcd[] = {34,35,36,39};
 uint8_t tenkey_keymap[] = {10, 1, 4, 7, 0, 2, 5, 8, 11, 3, 6, 9};
 uint8_t tenkey_button_status[12]={1,1,1,1,1,1,1,1,1,1,1,1};
+uint32_t get_pressed_key() {
+    for (uint32_t x=0; x<3; x++) {
+        digitalWrite(tenkey_pin_xyz[0], (x!=0));
+        digitalWrite(tenkey_pin_xyz[1], (x!=1));
+        digitalWrite(tenkey_pin_xyz[2], (x!=2));
+        for (uint32_t a=0; a<4; a++) {
+            uint32_t index = x*4 + a;
+            uint8_t val = digitalRead(tenkey_pin_abcd[a]);
+            if (tenkey_button_status[index] == 0) {
+                return tenkey_keymap[index];
+            }
+        }
+    }
+    return 0xff;
+}
+
 void loop2(void * params) {
     for (uint32_t i=0; i<sizeof(tenkey_pin_xyz); i++) {
         pinMode(tenkey_pin_xyz[i], OUTPUT);
@@ -355,7 +376,7 @@ void gen_exercise(int32_t* value1, int32_t* value2, int32_t* answer) {
             case menu_div2: gen_exercise_div(2, &temp_value1, &temp_value2, &temp_answer); break;
         };
         // retry another exercise
-    } while (temp_value1==*value1 && temp_value2==*value2);
+    } while (temp_value1==*value1 || temp_value2==*value2 || temp_answer==*answer);
     *value1 = temp_value1;
     *value2 = temp_value2;
     *answer = temp_answer;
@@ -618,6 +639,7 @@ void screen_keyevent_result(uint8_t key_no, uint32_t curr_millis) {
 
 const uint32_t timerevent_interval = 10;
 uint32_t prev_timerevent_millis = 0;
+uint32_t reset_highscore_counter = 0;
 uint8_t prev_index = 0xff;
 void loop(void) {
     //key event polling
@@ -651,6 +673,19 @@ void loop(void) {
             screen_timerevent_countdown(curr_millis);
         } else if (curr_screen_id == screen_playgame) {
             screen_timerevent_playgame(curr_millis);
+        }
+        
+        // reset hightscore_up
+        uint32_t key = get_pressed_key();
+        if (curr_screen_id == screen_menu && key==10) {
+            reset_highscore_counter += timerevent_interval;
+            if (reset_highscore_counter == 10 * 1000) { //10ms*1000=10sec
+                tone_melody.play_tone_melody_async(&beep_melody);
+                playgame_highsrore[curr_menu_id] = 0;
+                write_highscore();
+            }
+        } else {
+            reset_highscore_counter = 0;
         }
     }
 }
